@@ -1,0 +1,92 @@
+#!/bin/bash
+
+#	Module:	CE_Cleanup
+#	Authoer:	Doug Scheuer (Locus Logic Inc.)
+#	Contents:
+#		This module reads "cleanup" files listed in the "CleanUpDirs" variable
+#	and moves the files into a directory called ATTIC_CLEAN. At the end of
+#	the move, the "cleanup" file will be moved to the ATTIC_CLEAN directory
+#	also.
+
+# Location of the CleanUp files.
+CleanUpDirs="
+	/usr/genesis/sys/scripts/script.CleanUp
+	/usr/genesis/sys/scripts/E_CAM/E_CAM.CleanUp"
+
+DryRunCmd=""
+if [ $# -ne 0 ] ; then
+	if [ "$1" = "-n" ] ; then
+		DryRunCmd="/bin/echo"
+	else
+		echo "Usage: $0 [-n]"
+		echo "  -n   Print the move command. Do not execute it"
+		exit 0
+	fi
+fi
+	
+# Loop through the directories to cleanup
+SuccessFlag=1
+for CleanUpFile in $CleanUpDirs
+do
+	echo "Working on $CleanUpFile"
+
+	# Make sure we can read the CleanUp file
+	if [ ! -e "$CleanUpFile" ] ; then
+		echo "Error: Cannot find $CleanUpFile"
+		SuccessFlag=0
+		continue
+	fi
+	if [ ! -r "$CleanUpFile" ] ; then
+		echo "Error: Cannot read $CleanUpFile"
+		SuccessFlag=0
+		continue
+	fi
+
+	
+	# Try and make the ATTIC_CLEAN directory
+	DirName=`dirname $CleanUpFile`
+	AtticName="$DirName/ATTIC_CLEAN"
+	if [ ! -e "$AtticName" ] ; then
+		$DryRunCmd /bin/mkdir $AtticName
+		if [ $? -ne 0 ] ; then
+			echo "Error: Could not create $AtticName"
+			SuccessFlag=0
+			continue
+		fi
+	else
+		echo "Warning: Reusing $AtticName"
+		SuccessFlag=-1
+	fi
+
+	# Lets read the contents of the CleanUp file, and move the files.
+	while
+	read FileName
+	do
+		$DryRunCmd /bin/mv $DirName/$FileName $AtticName/$FileName
+		if [ $? -ne 0 ] ; then
+			echo "Warning: Issues moving $FileName"
+			SuccessFlag=-1
+		fi
+	done < $CleanUpFile
+
+	# Lets move the CleanUp file.
+	$DryRunCmd /bin/mv $CleanUpFile $AtticName
+	if [ $? -ne 0 ] ; then
+		echo "Warning: Issues moving the CleanUp file for $DirName"
+		SuccessFlag=-1
+	fi
+done
+
+case $SuccessFlag in
+	-1 )
+		echo "Completed cleanup with warnings"
+		;;
+	0 )
+		echo "Completed cleanup with errors"
+		;;
+	1 )
+		echo "Completed cleanup successfully without errors or warnings"
+		;;
+esac
+
+exit $SuccessFlag

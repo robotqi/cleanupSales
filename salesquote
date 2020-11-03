@@ -1,0 +1,6 @@
+COM duplicate_entity,job=$JOB,type=step,name=edit
+COM rename_entity,job=$JOB,is_fw=no,type=step,fw_type=form,name=edit+1,\
+new_name=cln
+COM copy_form,src_job=genesislib,src_form=tooling_form,dst_job=$JOB,\
+dst_form=tooling_form
+COM show_form,job=$JOB,form=tooling_form,updonly=No,updelem=
